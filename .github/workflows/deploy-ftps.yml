@@ -40,24 +40,59 @@ jobs:
       # Notes:
       # - This repository ignores /vendor (see .gitignore). Your server must already have vendor/ installed.
       # - We exclude .env and storage/ to avoid overwriting server environment and runtime data.
-      - name: Upload via FTPS
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          local-dir: ./
-          # FTP-Deploy-Action requires server-dir to end with a trailing slash.
-          # Appending "/" here avoids failures if the secret is set without it.
-          server-dir: ${{ secrets.FTP_REMOTE_DIR }}/
-          exclude: |
-            **/.git*/**
-            **/.github/**
-            **/node_modules/**
-            **/tests/**
-            **/.env
-            **/.env.*
-            **/storage/**
-            **/bootstrap/cache/**
-            **/vendor/**
+      - name: Install lftp
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y lftp
+
+      # Some shared-hosting FTPS servers intermittently close (FIN) connections for certain clients.
+      # lftp's mirror is generally more resilient and will retry/reconnect automatically.
+      - name: Upload via lftp (explicit FTPS)
+        shell: bash
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_REMOTE_DIR: ${{ secrets.FTP_REMOTE_DIR }}
+        run: |
+          set -euo pipefail
+
+          # Use explicit FTPS (AUTH TLS) on port 21.
+          # Certificate verification is disabled because many shared hosts use mismatched/chain issues.
+          lftp -e "
+            set ssl:verify-certificate no;
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set ftp:passive-mode true;
+            set net:max-retries 20;
+            set net:reconnect-interval-base 5;
+            set net:reconnect-interval-multiplier 1;
+            set net:timeout 30;
+            set cmd:fail-exit true;
+
+            open -p 21 -u \"${FTP_USERNAME}\",\"${FTP_PASSWORD}\" \"ftp://${FTP_SERVER}\";
+
+            # Deploy into remote directory. Depending on your host, this may be relative to /home/<user>/.
+            # Examples: \"public_html\", \"tolataste\", or \"/home/tolatast/tolataste\".
+            cd \"${FTP_REMOTE_DIR}\";
+
+            mirror -R \
+              --only-newer \
+              --verbose \
+              --parallel=1 \
+              --exclude-glob .git/ \
+              --exclude-glob .github/ \
+              --exclude-glob node_modules/ \
+              --exclude-glob tests/ \
+              --exclude-glob storage/ \
+              --exclude-glob bootstrap/cache/ \
+              --exclude-glob vendor/ \
+              --exclude-glob secure/ \
+              --exclude-glob .env \
+              --exclude-glob .env.* \
+              ./ .;
+
+            bye
+          "
