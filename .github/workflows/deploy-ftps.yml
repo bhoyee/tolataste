@@ -23,30 +23,21 @@ jobs:
       # - FTP_SERVER: e.g. ftp.example.com
       # - FTP_USERNAME
       # - FTP_PASSWORD
-      # - FTP_REMOTE_DIR: e.g. /public_html/
+      # - FTP_REMOTE_DIR: e.g. /tele-fleet.saptransportationandlogistics.ng/
       #
       # Notes:
-      # - This repository ignores /vendor (see .gitignore). Your server must already have vendor/ installed,
-      #   or you must run composer install on the server.
-      # - We exclude .env and runtime directories to avoid overwriting server environment and persistent data.
+      # - This repository ignores /vendor (see .gitignore). Your server must already have vendor/ installed.
+      # - We exclude .env and storage/ to avoid overwriting server environment and runtime data.
       - name: Upload via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          # Connection options (set as GitHub Secrets if you need overrides):
-          # - FTP_PROTOCOL: ftps (explicit) | ftps-legacy (implicit) | ftp (no TLS)
-          # - FTP_PORT: 21 (explicit) | 990 (implicit)
-          # - FTP_SECURITY: strict | loose
-          # - FTP_TIMEOUT: milliseconds (e.g. 600000)
-          protocol: ${{ secrets.FTP_PROTOCOL || 'ftps' }}
-          port: ${{ secrets.FTP_PORT || 21 }}
-          security: ${{ secrets.FTP_SECURITY || 'loose' }}
-          timeout: ${{ secrets.FTP_TIMEOUT || 600000 }}
-          log-level: verbose
+          protocol: ftps
           local-dir: ./
           # FTP-Deploy-Action requires server-dir to end with a trailing slash.
+          # Appending "/" here avoids failures if the secret is set without it.
           server-dir: ${{ secrets.FTP_REMOTE_DIR }}/
           exclude: |
             **/.git*/**
@@ -55,7 +46,6 @@ jobs:
             **/tests/**
             **/.env
             **/.env.*
-            **/secure/**
             **/storage/**
             **/bootstrap/cache/**
             **/vendor/**
