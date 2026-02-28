@@ -435,7 +435,11 @@
                         <a class="cart_icon"><i class="fas fa-shopping-basket"></i> <span class="topbar_cart_qty">{{ count($mini_cart_contents) }}</span></a>
                     </li>
                     <li>
-                        <a href="{{ route('dashboard') }}"><i class="fas fa-user"></i></a>
+                        @auth('web')
+                            <a href="{{ route('dashboard') }}" title="{{ __('user.Dashboard') }}"><i class="fas fa-user"></i></a>
+                        @else
+                            <a href="{{ route('login') }}" title="{{ __('user.Login') }}"><i class="fas fa-sign-in-alt"></i></a>
+                        @endauth
                     </li>
                     <!-- <li>
                         @auth('web')
