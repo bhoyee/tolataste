@@ -45,10 +45,13 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y lftp
+          sudo apt-get install -y lftp zip
 
       # Some shared-hosting FTPS servers intermittently close (FIN) connections for certain clients.
       # lftp's mirror is generally more resilient and will retry/reconnect automatically.
+      # If your host still drops long transfers (lots of small files), switch to zip upload:
+      # - Set GitHub Secret DEPLOY_STRATEGY=zip
+      # - Upload will place a single deploy.zip on the server; extract it in cPanel File Manager.
       - name: Upload via lftp (explicit FTPS)
         shell: bash
         env:
@@ -56,8 +59,27 @@ jobs:
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_REMOTE_DIR: ${{ secrets.FTP_REMOTE_DIR }}
+          DEPLOY_STRATEGY: ${{ secrets.DEPLOY_STRATEGY }}
         run: |
           set -euo pipefail
+
+          STRATEGY="${DEPLOY_STRATEGY:-mirror}"
+          echo "Deploy strategy: ${STRATEGY}"
+
+          if [[ "${STRATEGY}" == "zip" ]]; then
+            echo "Creating deploy.zip..."
+            rm -f deploy.zip
+            zip -r deploy.zip . \
+              -x ".git/*" ".git/**" \
+              -x ".github/*" ".github/**" \
+              -x "node_modules/*" "node_modules/**" \
+              -x "tests/*" "tests/**" \
+              -x "storage/*" "storage/**" \
+              -x "bootstrap/cache/*" "bootstrap/cache/**" \
+              -x "vendor/*" "vendor/**" \
+              -x "secure/*" "secure/**" \
+              -x ".env" ".env.*"
+          fi
 
           # Use explicit FTPS (AUTH TLS) on port 21.
           # Certificate verification is disabled because many shared hosts use mismatched/chain issues.
@@ -78,21 +100,25 @@ jobs:
             # Examples: \"public_html\", \"tolataste\", or \"/home/tolatast/tolataste\".
             cd \"${FTP_REMOTE_DIR}\";
 
-            mirror -R \
-              --only-newer \
-              --verbose \
-              --parallel=1 \
-              --exclude-glob .git/ \
-              --exclude-glob .github/ \
-              --exclude-glob node_modules/ \
-              --exclude-glob tests/ \
-              --exclude-glob storage/ \
-              --exclude-glob bootstrap/cache/ \
-              --exclude-glob vendor/ \
-              --exclude-glob secure/ \
-              --exclude-glob .env \
-              --exclude-glob .env.* \
-              ./ .;
+            if [ \"${STRATEGY}\" = \"zip\" ]; then
+              put -O . deploy.zip;
+            else
+              mirror -R \
+                --only-newer \
+                --verbose \
+                --parallel=1 \
+                --exclude-glob .git/ \
+                --exclude-glob .github/ \
+                --exclude-glob node_modules/ \
+                --exclude-glob tests/ \
+                --exclude-glob storage/ \
+                --exclude-glob bootstrap/cache/ \
+                --exclude-glob vendor/ \
+                --exclude-glob secure/ \
+                --exclude-glob .env \
+                --exclude-glob .env.* \
+                ./ .;
+            fi
 
             bye
           "
