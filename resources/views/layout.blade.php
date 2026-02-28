@@ -438,7 +438,7 @@
                         @auth('web')
                             <a href="{{ route('dashboard') }}" title="{{ __('user.Dashboard') }}"><i class="fas fa-user"></i></a>
                         @else
-                            <a href="{{ route('login') }}" title="{{ __('user.Login') }}"><i class="fas fa-sign-in-alt"></i></a>
+                            <a class="common_btn" href="{{ route('login') }}">{{ __('user.Login') }}</a>
                         @endauth
                     </li>
                     <!-- <li>
