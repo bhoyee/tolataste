@@ -17,6 +17,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Debug (DNS + FTPS handshake)
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Host: ${{ secrets.FTP_SERVER }}"
+          echo "Resolving DNS..."
+          getent hosts "${{ secrets.FTP_SERVER }}" || true
+          echo
+          echo "Testing explicit FTPS handshake on port 21..."
+          # This does not authenticate; it only verifies that STARTTLS works.
+          echo | openssl s_client -starttls ftp -connect "${{ secrets.FTP_SERVER }}:21" -servername "${{ secrets.FTP_SERVER }}" -brief
+
       # Deploys repository files to a shared-hosting account over FTPS.
       #
       # Required GitHub Secrets:
