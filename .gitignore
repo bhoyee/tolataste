@@ -1,0 +1,37 @@
+/.idea
+/.vscode
+
+/.env
+/.env.*.local
+
+/vendor/
+/node_modules/
+
+/storage/*.key
+/storage/logs/
+/storage/framework/cache/
+/storage/framework/sessions/
+/storage/framework/views/
+/storage/app/public/
+
+/bootstrap/cache/
+
+/.phpunit.result.cache
+/phpunit.xml
+
+/public/storage
+
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+
+# Local / deploy artifacts
+error_log
+*.zip
+
+# Secrets / credentials
+/secure/
+
+# Duplicate packaged copy of the app (contains vendor/, .env, etc.)
+/tolataste/
